@@ -1,5 +1,5 @@
 %% Runge-Kutte 4 Integrator
-% @ode (Time, State, ControlValue) -- call back to get value of ode
+% @ode (Time, State) -- callback to get value of ode
 % h step length
 % t current time
 % x current state

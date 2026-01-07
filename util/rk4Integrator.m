@@ -15,6 +15,7 @@ function X = rk4Integrator(ode,t0,tf,M,x, cb_u)
     end
 end
 
+%% Runge-Kutte 4 Integrator with callback to get the current control value
 function xf = rk4_with_cb(ode,h,t,x, u_callback, i)
     k1 = ode(t,x,u_callback(t,x,i));
     k2 = ode(t+h/2,x+h/2*k1,u_callback(t+h/2,x+h/2*k1,i));
