@@ -6,9 +6,19 @@ addpath('../util/')
 import casadi.*
 import casadi.tools.*
 
+Scenario = 1;
+
 %% MPC parameters
-tau = 0.002; %tau = 0.002
-T = 10*tau;            %Length of prediction horizion
+if Scenario == 0
+    tau = 0.002;
+    MaxControl = 267;
+    T = 10*tau;            %Length of prediction horizion
+else 
+    tau = 0.2;
+    MaxControl = 30;
+    T = 1;
+end
+
 N=floor(T/tau)+1;      %Number of discretisation steps of MPC control
 DiscretSteps= 300;     %Number of discretisation steps of integrator
 h=tau;                 %MPC sampling rate
@@ -16,11 +26,6 @@ InitialTime = 0;       %Initial time of simulation
 FinalTime   = 8.2;     %End time of simulation
 
 
-MaxControl = 267;      %30
-
-%% Cost function
-EnergyCoeff = 10^(-1);          %Amplification of the energy/control term
-f_stagecost =  @(time, error, control) error^2/(1+ min([sign(Funnel(time)^2-error^2),0])) + EnergyCoeff*control^2;
 
 %% Paramter Torsional Oscillator
 
@@ -62,13 +67,18 @@ f_SystemOutput = @(x) C*x;
 f_Model       = @(t,x,u) A*x+B*u;
 f_ModelOutput = @(x) C*x;
 
+%% Cost function
+EnergyCoeff = 10^(-1);          %Amplification of the energy/control term
+f_error = @(time, state) f_ModelOutput(state)-ReferenceSignal(time);
+f_stagecost =  @(time, state, control) f_error(time,state)^2/(1+ min([sign(Funnel(time)^2-f_error(time,state)^2),0])) + EnergyCoeff*control^2;
+
 
 
 %% Optimisation problem
 ModelStateDimension = length(InitialModelState);
 ControlDimension = length(C*B);
 
-[ocp, X, U, J,OCPInit,t0] = BuildOCP(f_Model,f_ModelOutput,f_stagecost,ModelStateDimension,ControlDimension,MaxControl, N, T, false);
+[ocp, X, U, J,OCPInit,t0] = BuildOCP(f_Model,f_stagecost,ModelStateDimension,ControlDimension,MaxControl, N, T);
 
 %% MPC Loop
 
@@ -141,20 +151,20 @@ TrackingError = SystemOutput - ReferenceSignal(tstate);
 Reference=ReferenceSignal(tstate);
 Psi = Funnel(tstate);
 
-save('data_fmpc_original.mat', 'tstate', 'SystemOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc');
 
-%return; 
-
-tstate_m = tstate;
-SystemOutput_m = SystemOutput;
-Reference_m = Reference;
-Psi_m = Psi;
-tcontrol_m = tcontrol;
-umpc_m = umpc;
-InitialTime_m = InitialTime;
-FinalTime_m = FinalTime;
-%save('data_fmpc_mani.mat', 'tstate_m', 'SystemOutput_m', 'Reference_m', 'Psi_m', 'tcontrol_m', 'InitialTime_m','FinalTime_m','umpc_m');
-
+if Scenario == 0
+    save('data_fmpc_scen0.mat', 'tstate', 'SystemOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc');
+else
+    tstate_1 = tstate;
+    SystemOutput_1 = SystemOutput;
+    Reference_1 = Reference;
+    Psi_1 = Psi;
+    tcontrol_1 = tcontrol;
+    umpc_1 = umpc;
+    InitialTime_1 = InitialTime;
+    FinalTime_1 = FinalTime;
+    save('data_fmpc_scen1.mat', 'tstate_1', 'SystemOutput_1', 'Reference_1', 'Psi_1', 'tcontrol_1', 'InitialTime_1','FinalTime_1','umpc_1');
+end
 %% Plots:
 
 figure
