@@ -1,48 +1,53 @@
 clear all
 close all
 
+Scenario = 0;
+
+% Scenario 0: ZoH FC
+
 %% ZoH FC
 
-% load('data_fc_zoh.mat')
-% load('data_fc_zoh_modified.mat')
-% 
-% 
-% figure
-% hold on
-%     plot(t_con,u_ZoH,'color','#D95319','linewidth',2)
-%     plot(t_con_m,u_ZoH_m,'color','#77AC30','linewidth',2)
-%     plot(t_FC,u_FC,'color','#0072BD','linewidth',2)
-%     axis tight
-%     xlim([0,1])
-%     ylim([-40 100])
-%     ylabel('Input u','interpreter','latex','FontSize',16)
-%     xlabel('Time t','interpreter','latex','FontSize',16)
-%     xticks([0 0.5 1])
-%     yticks([-40 0 50 100])
-%     legend('$u_{\rm ZoH}(t)$','$\hat{u}_{\rm ZoH}(t)$','$u_{\rm FC}(t)$','Interpreter','latex','FontSize',26,'Location','northeast')
-%     box off
-% hold off
-% saveas(gcf, 'Control_massoncar_ZoH', 'epsc')
-% 
-% figure;
-% hold on
-% plot(t_con,y_ZoH,'color','#D95319','linewidth',2)
-% plot(t_con_m,y_ZoH_m,'color','#77AC30','linewidth',2)
-% plot(t_FC,y_FC,'color','#0072BD','linewidth',2)
-% plot(t_con,ref+psi,'k--','linewidth',1.5)
-% plot(t_con,ref-psi,'k--','linewidth',1.5)
-% xlim([0 1])
-% ylim([-0.15 0.55])
-%     xlabel('Time t','interpreter','latex','FontSize',16)
-%     ylabel('System output y','interpreter','latex','FontSize',16)
-%     xticks([0 0.5 1])
-%     yticks([-0.15 0 0.15 0.5])
-% legend('$y_{\rm ZoH}(t)$','$\hat{y}_{\rm ZoH}(t)$','$y_{\rm FC}(t)$','$y_{\rm ref}(t)\pm0.15$','Interpreter','latex','FontSize',26,'Location','southeast')
-% box off
-%     hold off
-%     saveas(gcf, 'Output_massoncar_ZoH', 'epsc')
+if 0 == Scenario
+    load('data_fc_zoh_scen1.mat')
+    load('data_fc_zoh_scen2.mat')
+    
+    
+    figure
+    hold on
+        plot(t_con,u_ZoH,'color','#D95319','linewidth',2)
+        plot(t_con_m,u_ZoH_m,'color','#77AC30','linewidth',2)
+        plot(t_FC,u_FC,'color','#0072BD','linewidth',2)
+        axis tight
+        xlim([0,1])
+        ylim([-40 100])
+        ylabel('Input u','interpreter','latex','FontSize',16)
+        xlabel('Time t','interpreter','latex','FontSize',16)
+        xticks([0 0.5 1])
+        yticks([-40 0 50 100])
+        legend('$u_{\rm ZoH}(t)$','$\hat{u}_{\rm ZoH}(t)$','$u_{\rm FC}(t)$','Interpreter','latex','FontSize',26,'Location','northeast')
+        box off
+    hold off
+    saveas(gcf, 'Control_massoncar_ZoH', 'epsc')
+    
+    figure;
+    hold on
+    plot(t_con,y_ZoH,'color','#D95319','linewidth',2)
+    plot(t_con_m,y_ZoH_m,'color','#77AC30','linewidth',2)
+    plot(t_FC,y_FC,'color','#0072BD','linewidth',2)
+    plot(t_con,ref+psi,'k--','linewidth',1.5)
+    plot(t_con,ref-psi,'k--','linewidth',1.5)
+    xlim([0 1])
+    ylim([-0.15 0.55])
+        xlabel('Time t','interpreter','latex','FontSize',16)
+        ylabel('System output y','interpreter','latex','FontSize',16)
+        xticks([0 0.5 1])
+        yticks([-0.15 0 0.15 0.5])
+    legend('$y_{\rm ZoH}(t)$','$\hat{y}_{\rm ZoH}(t)$','$y_{\rm FC}(t)$','$y_{\rm ref}(t)\pm0.15$','Interpreter','latex','FontSize',26,'Location','southeast')
+    box off
+    hold off
+    saveas(gcf, 'Output_massoncar_ZoH', 'epsc')
 
-
+elseif Scenario == 1
 
 % load('data_fc.mat')
 % load('data_fmpc_10-3.mat')
@@ -81,6 +86,7 @@ close all
 %     hold off
 %     saveas(gcf, 'Output_massoncar_FC', 'epsc')
 
+end
 
 % FMPC vs MPC
 % 
@@ -260,37 +266,37 @@ close all
 % hold off
 % saveas(gcf, 'Output_learning_fmpc', 'epsc')
 
-load('data_learning_fmpc_dist.mat')
-figure;
-    hold on
-    plot(tstate,u_applied,'color','k','linewidth',2)
-    stairs(tcontrol,umpc,'color','#D95319','linewidth',2)
-    plot(tstate,uFC,'color','#0072BD','linewidth',2)
-    axis tight
-    xlim([0,10])
-    ylim([-31 31])
-    xlabel('Time t','interpreter','latex','FontSize',16)
-    ylabel('Input u','interpreter','latex','FontSize',16)
-    xticks([0 2 4 6 8 10])
-    yticks([-30 -15 0 15 30])
-    legend('$u(t)=u_{\rm FMPC}(t)+u_{\rm FC}(t)$','$u_{\rm FMPC}(t)$','$u_{\rm FC}(t)$','Interpreter','latex','FontSize',26,'Location','northeast')
-    box off
-hold off
-saveas(gcf, 'Control_learning_fmpc_dist', 'epsc')
-
-figure;
-hold on
-    plot(tstate,TrackingError,'color','#0072BD','linewidth',2)
-    plot(tstate,ModelError,'--','color','#D95319','linewidth',2)
-    plot(tstate,Psi,'k--','linewidth',1.5)
-    plot(tstate,-Psi,'k--','linewidth',1.5)
-    xlim([0 10])
-    ylim([-1 1])
-    xlabel('Time t','interpreter','latex','FontSize',16)
-    ylabel('Temperature y','interpreter','latex','FontSize',16)
-    xticks([0 2 4 6 8 10])
-    yticks([-1 -0.5 0 0.5 1])
-    legend('$y(t)-y_{\rm ref}(t)$','$y_{\rm M}(t)-y_{\rm ref}(t)$','$\pm\psi(t)$','Interpreter','latex','FontSize',26,'Location','northeast')
-    box off
-hold off
-saveas(gcf, 'Output_learning_fmpc_dist', 'epsc')
+% load('data_learning_fmpc_dist.mat')
+% figure;
+%     hold on
+%     plot(tstate,u_applied,'color','k','linewidth',2)
+%     stairs(tcontrol,umpc,'color','#D95319','linewidth',2)
+%     plot(tstate,uFC,'color','#0072BD','linewidth',2)
+%     axis tight
+%     xlim([0,10])
+%     ylim([-31 31])
+%     xlabel('Time t','interpreter','latex','FontSize',16)
+%     ylabel('Input u','interpreter','latex','FontSize',16)
+%     xticks([0 2 4 6 8 10])
+%     yticks([-30 -15 0 15 30])
+%     legend('$u(t)=u_{\rm FMPC}(t)+u_{\rm FC}(t)$','$u_{\rm FMPC}(t)$','$u_{\rm FC}(t)$','Interpreter','latex','FontSize',26,'Location','northeast')
+%     box off
+% hold off
+% saveas(gcf, 'Control_learning_fmpc_dist', 'epsc')
+% 
+% figure;
+% hold on
+%     plot(tstate,TrackingError,'color','#0072BD','linewidth',2)
+%     plot(tstate,ModelError,'--','color','#D95319','linewidth',2)
+%     plot(tstate,Psi,'k--','linewidth',1.5)
+%     plot(tstate,-Psi,'k--','linewidth',1.5)
+%     xlim([0 10])
+%     ylim([-1 1])
+%     xlabel('Time t','interpreter','latex','FontSize',16)
+%     ylabel('Temperature y','interpreter','latex','FontSize',16)
+%     xticks([0 2 4 6 8 10])
+%     yticks([-1 -0.5 0 0.5 1])
+%     legend('$y(t)-y_{\rm ref}(t)$','$y_{\rm M}(t)-y_{\rm ref}(t)$','$\pm\psi(t)$','Interpreter','latex','FontSize',26,'Location','northeast')
+%     box off
+% hold off
+% saveas(gcf, 'Output_learning_fmpc_dist', 'epsc')

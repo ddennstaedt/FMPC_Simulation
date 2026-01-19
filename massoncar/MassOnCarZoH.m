@@ -2,6 +2,7 @@ clear all
 close all
 clc;
 
+Scenario = 2;
 
 %System parameter for y'' = R1*y + R2 y' + S*eta + Gam*u, eta' = Q*eta + P y
 % -> y'' = f(y,y',eta) + Gam*u,
@@ -104,7 +105,7 @@ sup_dphi_phi = a_psi * b_psi / (a_psi + c_psi);
 
 
 % Initial values
-y0 = -0.0925;% Ref(0,t_change); %-0.0925;%
+y0 = -0.0925;
 dy0 = dRef(0,t_change);
 eta0 = [0;0];
 
@@ -123,8 +124,6 @@ if norm(e10) > 1
 elseif norm(e20) >1
     error('e2 too large')
 end
-
-%return
 
 % Reference metrics
 ref_max = 0.4*1;
@@ -174,7 +173,6 @@ aa = sup_phi * gmax * bet/lambda;
 kap1 = kap0 +  aa; %3
 
 % Setting the threshold when the control becomes active
-%aa*(2*kap0 + aa)/kap1^2;
 
 % Sampling parameters
 tau_1 = kap0/kap1^2 ;
@@ -186,10 +184,10 @@ tau_2 = (1-lambda)/kap0 ;
 
 tau = min(tau_1, tau_2) ;% maximale sampling time -> 1/tau minimal sampling rate
 
-
-%bet = 4;
-%tau = 0.02;
-%return
+if 2 == Scenario
+    bet = 4;
+    tau = 0.02;
+end
 
 if tau < 1e-5
     error('tau too small')
@@ -206,14 +204,13 @@ ref_iter = Ref(t,t_change); % reference at sampling time
 dref_iter = dRef(t,t_change); % reference at sampling time
 
 phi_iter = Phi(t,a_psi,b_psi,c_psi);
-%dphi_iter = dPhi(t,a_psi,b_psi,c_psi);
 
 X0 = [y0,dy0,eta0']; % initial contidions
 e00 = X0(1) - ref_iter(1,:); % initial error
 
 %initialization
 x_sampled = [X0; zeros(iter,4)];
-u_samp = [];%[zeros(iter,1)];
+u_samp = [];
 
 z_con = []; % z_con is the "continuous" solution of the system's dynamics
 t_con = []; % t_con is the "continuous" time
@@ -234,13 +231,6 @@ for k=1:iter-1
     elseif norm(e2) > 1
         error('e2 exceeds 1')
     end
-    %% egal welches u, wenn e_r < lambda
-    % if norm(e2) < lambda % control will be active of not
-    %     if k > 1
-    %     u_samp(k,:) = u_fac * u_samp(k-1,:);
-    %     else
-    %     u_samp(k,:) = 0;  
-    %     end
     if norm(e2) < lambda % control will be active of not
         u_samp(k,:) = 0 ;
     else
@@ -285,27 +275,6 @@ plot(t_con,E(:,1),'b')
 hold on
 plot(t_con,E(:,2),'r')
 
-% Sampled control and tracking error
-%Control=zeros(size(t_con,1),1);
-%e_norm=zeros(size(t_con,1),1);
-%e1N = zeros(size(t_con,2),1);
-%e2N = zeros(size(t_con,2),1);
-
-% for k=1:size(t_con,1)
-% for l=1:floor(t_con(k)/tau)-1
-%     Control(k,:) = u_samp(l,:);
-% end
-% e1N(k) = norm(E(k,1));
-% e2N(k) = norm(E(k,2));
-% e_norm(k) = norm(e(k,:));
-% end
-
-%e1N = zeros(size(t,2),1);
-%e2N = zeros(size(t,2),1);
-%for k = 1:size(t,2)
-%    e1N(k) = norm(e1_iter(k));
-%    e2N(k) = norm(e2_iter(k));
-%end
 
 %% Pure funnel control
   options = odeset(AbsTol=1e-6,RelTol=1e-6);
@@ -327,40 +296,6 @@ for l=1:size(t_FC,1)-1
     delta_tFC(l) = t_FC(l+1) - t_FC(l);
 end
 
-%M_delta = max(delta_tFC)
-%m_delta = min(delta_tFC)
-
-%u_FC_max = max(abs(u_FC))
-
-%Mtau = M_delta/tau % Iff Mtau > 1, then the maximal time-step size of the adaptive routine (ode15s, ode45) is larger than tau
-%mtau = tau/m_delta % Iff mtau > 1, then the minimal time-step size of the adaptive routine (ode15s, ode45) is smaller than tau
-
-%u_FC_abs = abs(u_FC);
-%U_FC_total = trapz(t_FC,u_FC_abs);
-
-%u_samp_abs = abs(u_ZoH);
-%U_samp_total = trapz(t_con,u_samp_abs);
-
-% figure('Name','Errors and funnels'); % Tracking error with funnels
-% plot(t_con,e,'r')
-% hold on
-% plot(t_FC,e_FC,'b') % errors from funnel control
-% plot(t_con,psi, 'k')
-% %plot(t_con,psi_min+0*t_con, 'k--')
-% %plot(t_con,lambda+0*t_con,'k:')
-% %
-% plot(t_con,-psi, 'k')
-% %plot(t_con,-psi_min+0*t_con, 'k--')
-% %plot(t_con,-lambda+0*t_con,'k:')
-% legend('$y(t) - \rho(t)$',...
-%     '$ y_{\rm FC}(t) - y_{\rm ref}(t)$',...
-%     '$\psi(t)$',...
-%     'Interpreter','latex', 'FontSize',16)
-% box off
-
-%hat_t = t_con;
-%hat_y = y;
-%hat_u = u_ZoH;
 y_ZoH =y;
 y_ZoH_m =y;
 t_con_m = t_con;
@@ -369,9 +304,11 @@ psi_m = psi;
 u_ZoH_m =u_ZoH;
 u_FC_m= u_FC;
 
-save('data_fc_zoh.mat', 'y_ZoH','t_con','ref','psi','u_ZoH','u_FC','t_FC','y_FC');
-%save('data_fc_zoh_modified.mat', 'y_ZoH_m','t_con_m', 'ref_m','psi_m','u_ZoH_m','u_FC_m','t_FC','y_FC');
-% load('data_fc_zoh_modified.mat')
+if 1 == Scenario
+    save('data_fc_zoh_scen1.mat', 'y_ZoH','t_con','ref','psi','u_ZoH','u_FC','t_FC','y_FC');
+else
+    save('data_fc_zoh_scen2.mat', 'y_ZoH_m','t_con_m', 'ref_m','psi_m','u_ZoH_m','u_FC_m','t_FC','y_FC');
+end
 
 figure('Name','Reference and funnel'); % Norm of the tracking error
 plot(t_con,ref+psi,'k--')
@@ -384,18 +321,6 @@ legend('$\psi(t)$','$\|y(t) - y_{\rm ref}(t)\|$', ...
     'Interpreter','latex', 'FontSize',16)
 box off
 
-% figure('Name','Error norm and funnel'); % Norm of the tracking error
-% plot(t_con,psi,'k')
-% hold on
-% plot(t_con,e_norm,'r');
-% %plot(t_con,psi_min+0*t_con,'k--')
-% %plot(t_con,lambda+0*t_con,'k:')
-% plot(t_FC,eFC_norm,'b')
-% legend('$\psi(t)$','$\|y(t) - y_{\rm ref}(t)\|$', ...
-%     '$\| y_{\rm FC}(t) - y_{\rm ref}(t) \|$',...
-%     'Interpreter','latex', 'FontSize',16)
-% box off
-
 figure('Name','Controls'); % Controls
 plot(t_con, u_ZoH,'r')
 hold on
@@ -405,72 +330,6 @@ legend('$u(t)$',...
     '$ u_{\rm FC}(t)$',...
     'Interpreter','latex', 'FontSize',16)
 box off
-
-
-
-% 
-% figure('Name','Errorvariable e1');
-% plot(t_con,e1N,'r');
-% hold on
-% plot(t,abs(e1_iter),'*')
-% plot(t_con,e2N,'b');
-% hold on
-% plot(t,abs(e2_iter),'*')
-% plot(t,lambda +0*t,'k--')
-% legend('$\| e_1(t) \|$','$\|e_1(t_k)\|$',...
-%     '$\| e_2(t) \|$','$\|e_2(t_k)\|$',...
-%     '$\lambda$',...
-%     'Interpreter','latex', 'FontSize',16)
-% box off
-% % 
-% figure('Name','Errors and funnels'); % Tracking error with funnels
-% plot(t_con,e,'r')
-% hold on
-% plot(t_FC,e_FC,'b') % errors from funnel control
-% plot(t_con,psi, 'k')
-% %plot(t_con,psi_min+0*t_con, 'k--')
-% %plot(t_con,lambda+0*t_con,'k:')
-% %
-% plot(t_con,-psi, 'k')
-% %plot(t_con,-psi_min+0*t_con, 'k--')
-% %plot(t_con,-lambda+0*t_con,'k:')
-% legend('$y(t) - \rho(t)$',...
-%     '$ y_{\rm FC}(t) - y_{\rm ref}(t)$',...
-%     '$\psi(t)$',...
-%     'Interpreter','latex', 'FontSize',16)
-% box off
-% 
-% figure('Name','Error norm and funnel'); % Norm of the tracking error
-% plot(t_con,psi,'k')
-% hold on
-% plot(t_con,e_norm,'r');
-% %plot(t_con,psi_min+0*t_con,'k--')
-% %plot(t_con,lambda+0*t_con,'k:')
-% plot(t_FC,eFC_norm,'b')
-% legend('$\psi(t)$','$\|y(t) - y_{\rm ref}(t)\|$', ...
-%     '$\| y_{\rm FC}(t) - y_{\rm ref}(t) \|$',...
-%     'Interpreter','latex', 'FontSize',16)
-% box off
-% 
-% figure('Name','Controls'); % Controls
-% plot(t_con, Control,'r')
-% hold on
-% plot(t_FC,u_FC,'b')
-% legend('$u(t)$',...
-%     '$ u_{\rm FC}(t)$',...
-%     'Interpreter','latex', 'FontSize',16)
-% box off
-% 
-% figure('Name','Reference and funnel'); % Norm of the tracking error
-% plot(t_con,ref+psi,'k--')
-% hold on
-% plot(t_con,ref-psi,'k--')
-% plot(t_con,y,'r');
-% plot(t_FC,y_FC,'b')
-% legend('$\psi(t)$','$\|y(t) - y_{\rm ref}(t)\|$', ...
-%     '$\| y_{\rm FC}(t) - y_{\rm ref}(t) \|$',...
-%     'Interpreter','latex', 'FontSize',16)
-% box off
 
 %% Functions
 
@@ -561,24 +420,6 @@ end
 function fun = Ek(phi,e,e_pre)
 fun = phi*e + Gain(norm(e_pre)^2) * e_pre;
 end
-
-%% Vergleich der Schrittweiten und Controls
-% for l=1:size(t_FC,1)-1
-%     delta_tFC(l) = t_FC(l+1) - t_FC(l);
-% end
-% 
-% M_delta = max(delta_tFC)
-% m_delta = min(delta_tFC)
-% tau
-% 
-% Mtau = M_delta/tau % Iff Mtau > 1, then the maximal time-step size of the adaptive routine (ode15s, ode45) is larger than tau
-% mtau = m_delta/tau % Iff mtau > 1, then the minimal time-step size of the adaptive routine (ode15s, ode45) is larger than tau
-% 
-% u_FC_abs = abs(u_FC);
-% U_FC_total = trapz(t_FC,u_FC_abs)
-% 
-% u_samp_abs = abs(Control);
-% U_samp_total = trapz(t_con,u_samp_abs)
 
 
 
