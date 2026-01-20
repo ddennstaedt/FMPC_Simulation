@@ -5,16 +5,23 @@ addpath('~/Documents/workspace/casadi-3.7.0');
 addpath('../util/')
 import casadi.*
 import casadi.tools.*
+Scenario = 1;
+% Scenario 0: Model update every 5 iterations
+% Scenario 1: Model update every 3 iterations
 
 %% MPC Parameter
 T = 1;                 %Length of prediction horizion
 N = 10;                %Number of discretisation steps of MPC control
-M= 1000;              %Number of discretisation steps of integrator
+M= 1000;               %Number of discretisation steps of integrator
 h=T/N;                 %MPC sampling rate
 InitialTime = 0;       %Initial time of simulation
 FinalTime   = 4.1;     %End time of simulation
 MaxControl = 600;
-
+if 0 == Scenario
+    ModelUpdateIter = 5;   %Update Model every X iterations
+else
+    ModelUpdateIter = 3;   %Update Model every X iterations
+end
 %% Initialisation
 InitialControlValue = 450;
 
@@ -25,7 +32,7 @@ f_SystemOutput = @ode_chemicalreactor_output;
 
 %% Cost function
 FMPCCoeff   = 1;                %Amplification of the funnel term
-EnergyCoeff = 10^(-4);%10^(-4);  %10^(-1)        %Amplification of the energy/control term
+EnergyCoeff = 10^(-4);          %Amplification of the energy/control term
 
 InitialSystemState = [0.02; 0.9; 270];
 
@@ -111,8 +118,7 @@ while true
     f_ControlCB = @(t,x,i) uopt(1)+ FunnelControlValue( ...
         AdaptiveFunnel(t,f_ModelOutput(ModelTrajectory(:,i))), ...
         f_SystemOutput(x)-f_ModelOutput(ModelTrajectory(:,i)));
-    %f_ControlCB = @(t,x,i) FunnelControlValue(1./Funnel(t),Error(f_SystemOutput(x),t));
-
+   
     %Compute next system state
     SystemTrajectory = rk4Integrator(@(t,x,u) f_System(t,x,u) ...
         ,CurrentTime,CurrentTime+h,M,CurrentSystemState,f_ControlCB);
@@ -148,12 +154,11 @@ while true
     if CurrentTime+h>=FinalTime
         break
     end
-    if mod(Iteration, 5) == 0 %update model every 10 iterations
+    if mod(Iteration, ModelUpdateIter) == 0 %update model every  iterations
         [A_mod, B_mod, C_mod, D_mod, x0, XN] = LearnModel(OutputOptim, u_optim, CurrentTime-h, CurrentTime, M);
         CurrentModelState = XN;
     else
         CurrentModelState = ModelTrajectory(:,end);
-        %CurrentModelState(1) = CurrentSystemState(3);
     end
 end
 
@@ -178,8 +183,11 @@ TrackingError = SystemOutput - ReferenceSignal(tstate);
 Reference=ReferenceSignal(tstate);
 Psi = Funnel(tstate);
 
-save('data_learning_fmpc.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied');
-
+if 0 == Scenario
+    save('data_learning_fmpc.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied');
+else
+    save('data_learning_fmpc_often.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied');
+end 
 %% Plots:
 
 figure
@@ -190,7 +198,6 @@ hold on
     fplot(@(x) ReferenceSignal(x) + Funnel(x),TimeWindow,'Color', 'r');
     fplot(@(x) ReferenceSignal(x) - Funnel(x),TimeWindow,'Color', 'r');
     xlim([InitialTime,4])
-    %ylim([-2 2])
 
     ylabel('$y$','interpreter','latex')
     xlabel('time $t$','interpreter','latex')

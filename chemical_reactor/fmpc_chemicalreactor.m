@@ -6,10 +6,24 @@ addpath('../util/')
 import casadi.*
 import casadi.tools.*
 
+Scenario = 2;
+% Scenario 0: FMPC with horizon 0.01, 
+% Scenario 1: FMPC with horizon 1,
+% Scenario 2: MPC with horizon  0.01,
+% Scenario 3: MPC with horizon  1,
 %% MPC parameters
-T = 1;%1;%0.01;                 %Length of prediction horizion
-N = 10;%10;%20;                %Number of discretisation steps of MPC control
-M = 10;%100;%10;              %Number of discretisation steps of integrator
+if 0 == Scenario || 2 == Scenario
+    T = 0.01;                     %Length of prediction horizion
+    N = 20;                       %Number of discretisation steps of MPC control
+    M = 10;                       %Number of discretisation steps of integrator
+    EnergyCoeff = 10^(-1);        %Amplification of the energy/control term
+elseif 1 == Scenario || 3 == Scenario
+    T = 1;                        %Length of prediction horizion
+    N = 10;                       %Number of discretisation steps of MPC control
+    M = 100;                      %Number of discretisation steps of integrator
+    EnergyCoeff = 10^(-4);        %Amplification of the energy/control term
+end
+
 h=T/N;                 %MPC sampling rate
 InitialTime = 0;       %Initial time of simulation
 FinalTime   = 4.1;     %End time of simulation
@@ -32,19 +46,19 @@ f_ModelOutput = @ode_chemicalreactor_output;
 
 %% Cost function
 FMPCCoeff   = 1;                %Amplification of the funnel term
-EnergyCoeff = 10^(-4);%10^(-4);  %10^(-1)        %Amplification of the energy/control term
 f_error     = @(time,state) f_ModelOutput(state) - ReferenceSignal(time);
-f_stagecost = GetFunnelCost(f_error,FMPCCoeff,EnergyCoeff);
-
-%f_stagecost =  @(time, state, control) FMPCCoeff*f_error(time,stat)^2 + EnergyCoeff*norm(control-360)^2;
-
-f_constraint = @(time,state) ReferenceSignal(time)-Funnel(time)<=f_ModelOutput(state)<=ReferenceSignal(time)+Funnel(time);
+if 0 == Scenario || 1 == Scenario
+    f_stagecost = GetFunnelCost(f_error,FMPCCoeff,EnergyCoeff);
+else
+    % quadratic stage cost
+    f_stagecost =  @(time, state, control) FMPCCoeff*f_error(time,state)^2 + EnergyCoeff*norm(control-360)^2;
+end
 
 %% Optimisation problem
 ModelStateDimension = length(InitialModelState);
 ControlDimension = 1;
 
-[ocp, X, U, J,OCPInit,t0] = BuildOCP(f_Model,f_stagecost,ModelStateDimension,ControlDimension,MaxControl, N, T,f_constraint);
+[ocp, X, U, J,OCPInit,t0] = BuildOCP(f_Model,f_stagecost,ModelStateDimension,ControlDimension,MaxControl, N, T);
 
 %% MPC Loop
 
@@ -122,8 +136,6 @@ TrackingError = SystemOutput - ReferenceSignal(tstate);
 Reference=ReferenceSignal(tstate);
 Psi = Funnel(tstate);
 
-%save('data_fmpc_long.mat', 'tstate', 'SystemOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc');
-
 tstate_m = tstate;
 SystemOutput_m = SystemOutput;
 Reference_m = Reference;
@@ -132,8 +144,16 @@ tcontrol_m = tcontrol;
 umpc_m = umpc;
 InitialTime_m = InitialTime;
 FinalTime_m = FinalTime;
-%save('data_mpc_quadratic_long.mat', 'tstate_m', 'SystemOutput_m', 'Reference_m', 'Psi_m', 'tcontrol_m', 'InitialTime_m','FinalTime_m','umpc_m');
 
+if 0 == Scenario
+    save('data_fmpc_short.mat', 'tstate', 'SystemOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc');
+elseif 1 == Scenario
+    save('data_fmpc_long.mat', 'tstate', 'SystemOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc');
+elseif 2 == Scenario
+    save('data_mpc_quadratic_short.mat', 'tstate_m', 'SystemOutput_m', 'Reference_m', 'Psi_m', 'tcontrol_m', 'InitialTime_m','FinalTime_m','umpc_m');
+elseif 3 == Scenario
+    save('data_mpc_quadratic_long.mat', 'tstate_m', 'SystemOutput_m', 'Reference_m', 'Psi_m', 'tcontrol_m', 'InitialTime_m','FinalTime_m','umpc_m');
+end
 
 %% Plots:
 
@@ -144,7 +164,6 @@ hold on
     plot(tstate,Reference + Psi,'Color', 'r');
     plot(tstate,Reference - Psi,'Color', 'r');
     xlim([InitialTime,4])
-    %ylim([-2 2])
 
     ylabel('$y$','interpreter','latex')
     xlabel('time $t$','interpreter','latex')
@@ -159,8 +178,7 @@ hold on
     plot(tstate,Psi,'Color', 'r');
     plot(tstate,- Psi,'Color', 'r');
     xlim([InitialTime,4])
-    %ylim([-1 1])
-    
+
     ylabel('$y-y_{\mathrm{ref}}$','interpreter','latex')
     xlabel('time $t$','interpreter','latex')
 

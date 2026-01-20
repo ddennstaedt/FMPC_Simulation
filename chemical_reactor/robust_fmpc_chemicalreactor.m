@@ -5,11 +5,16 @@ addpath('~/Documents/workspace/casadi-3.7.0');
 addpath('../util/')
 import casadi.*
 import casadi.tools.*
+global Scenario;
+Scenario = 2;
+% Scenario 0: No reinit
+% Scenario 1: Trivial re-init
+% Scenario 2: Reinit with system data
 
 %% MPC Parameter
 T = 1;                 %Length of prediction horizion
 N = 10;                %Number of discretisation steps of MPC control
-M= 10000;              %Number of discretisation steps of integrator
+M = 10000;             %Number of discretisation steps of integrator
 h=T/N;                 %MPC sampling rate
 InitialTime = 0;       %Initial time of simulation
 FinalTime   = 4.1;     %End time of simulation
@@ -32,7 +37,7 @@ f_ModelOutput = @ode_chemicalreactor_output;
 
 %% Cost function
 FMPCCoeff   = 1;                %Amplification of the funnel term
-EnergyCoeff = 10^(-4);%10^(-4);  %10^(-1)        %Amplification of the energy/control term
+EnergyCoeff = 10^(-4);          %Amplification of the energy/control term
 f_error     = @(time,state) f_ModelOutput(state) - ReferenceSignal(time);
 f_stagecost = GetFunnelCost(f_error,FMPCCoeff,EnergyCoeff);
 
@@ -115,10 +120,11 @@ while true
         j = j+1;
     end
 
-    
-    %Update model state with measurement
-    %Only update model output with system output 
-    %CurrentModelState(3) = f_SystemOutput(CurrentSystemState);
+    if 2 == Scenario
+        %Update model state with measurement
+        %Only update model output with system output 
+        CurrentModelState(3) = f_SystemOutput(CurrentSystemState);
+    end
 
     %Set last control values as initial guesses for the next control to
     %help the optimiser
@@ -154,8 +160,13 @@ Psi = Funnel(tstate);
 ModelError    = ModelOutput - ReferenceSignal(tstate);
 TrackingError = SystemOutput - ReferenceSignal(tstate);
 
-
-save('data_robustfmpc_nonrobust.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied');
+if 0 == Scenario
+    save('data_robustfmpc_nonrobust.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied');
+elseif 1 == Scenario
+    save('data_robustfmpc_trivial.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied');
+else
+    save('data_robustfmpc_reinit.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied');
+end
 
 
 
@@ -219,12 +230,15 @@ function a = FunnelControlAlpha(x)
 end
 
 function beta=ActivationFunction(Phi,CurError)
+    global Scenario;
     if Phi * norm(CurError) < 0.4
         beta =0;
     else
         beta = Phi * norm(CurError) - 0.4;
     end
-    beta = 0;
+    if 0 == Scenario 
+        beta = 0;
+    end
 end
 
 function u_FC = FunnelControlValue (Cur_Funnel_Phi, Cur_Error)
