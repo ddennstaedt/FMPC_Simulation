@@ -1,14 +1,10 @@
 close all
 clear all
 
-%addpath('~/Documents/workspace/casadi-3.7.0');
-%addpath('../util/')
-import casadi.*
-import casadi.tools.*
 
 %% Parameters
-M= 10^7;%10;          %Number of discretisation steps of integrator
-InitialTime = 0;       %Initial time of simulation
+M= 10^7;              %Number of discretisation steps of integrator
+InitialTime = 0;      %Initial time of simulation
 FinalTime   = 10;     %End time of simulation
 
 InitialSystemState = [0; 0; 0; 0];
@@ -27,7 +23,6 @@ TimeWindow  = [InitialTime FinalTime];
 
 %% Data for plots
 
-%SystemOutput_fc  = f_SystemOutput(SystemStates);
 SystemOutput_fc = zeros(1,length(t_fc));
 ufc = zeros(1,length(t_fc));
 TrackingError_FC = zeros(1,length(t_fc));
@@ -36,7 +31,6 @@ for i = 1:length(t_fc)
     ufc(i) = FunnelControl(t_fc(i),f_SystemOutput(state_fc(i,:)'),f_SystemOutputDot(state_fc(i,:)'));
     TrackingError_FC(i) = f_SystemOutput(state_fc(i,:)')-ReferenceSignal(t_fc(i));
 end
-%TrackingError_FC = SystemOutput_fc - ReferenceSignal(t_fc);
 
 Reference_fc=ReferenceSignal(t_fc);
 Psi_fc = Funnel(t_fc);
@@ -52,8 +46,6 @@ hold on
     plot(t_fc,Reference_fc + Psi_fc,'Color', 'r');
     plot(t_fc,Reference_fc - Psi_fc,'Color', 'r');
     xlim([InitialTime,10])
-    %ylim([-2 2])
-
     ylabel('$y$','interpreter','latex')
     xlabel('time $t$','interpreter','latex')
 
@@ -66,7 +58,6 @@ hold on
     plot(t_fc,Psi_fc,'Color', 'r');
     plot(t_fc,- Psi_fc,'Color', 'r');
     xlim([InitialTime,4])
-    %ylim([-1 1])
     
     ylabel('$y-y_{\mathrm{ref}}$','interpreter','latex')
     xlabel('time $t$','interpreter','latex')

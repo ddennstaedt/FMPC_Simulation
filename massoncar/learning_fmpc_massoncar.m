@@ -5,13 +5,16 @@ addpath('~/Documents/workspace/casadi-3.7.0');
 addpath('../util/')
 import casadi.*
 import casadi.tools.*
+Scenario = 1;
+%Scenario 0: learning FMPC
+%Scenario 1: with disturbance
 
 %% MPC Parameter
-T = 0.5;%1;%0.01;                 %Length of prediction horizion
-N = 20;%10;%20;                %Number of discretisation steps of MPC control
-M = 100;%100;%10;              %Number of discretisation steps of integrator
-h=T/N;                 %MPC sampling rate
-InitialTime = 0;       %Initial time of simulation
+T = 0.5;              %Length of prediction horizion
+N = 20;               %Number of discretisation steps of MPC control
+M = 100;              %Number of discretisation steps of integrator
+h=T/N;                %MPC sampling rate
+InitialTime = 0;      %Initial time of simulation
 FinalTime   = 10;     %End time of simulation
 
 MaxControl = 30;
@@ -25,12 +28,16 @@ InitialSystemState = [0; 0; 0; 0];
 
 %% ODE system
 
-f_System = @ode_massoncar_dist;
+if 0 == Scenario
+    f_System = @ode_massoncar;
+else 
+    f_System = @ode_massoncar_dist;
+end
 f_SystemOutput = @ode_massoncar_output;
 f_SystemOutputDot = @ode_massoncar_outputdot;
 %% Cost function
 FMPCCoeff   = 1;                %Amplification of the funnel term
-EnergyCoeff = 10^(-4);%10^(-4);  %10^(-1)        %Amplification of the energy/control term
+EnergyCoeff = 10^(-4);          %Amplification of the energy/control term
 
 %% Auxilliary funnel
 InitialError = 1;
@@ -89,11 +96,9 @@ while true
 
     
     f_error     = @(time,state) f_ModelOutput(state) - ReferenceSignal(time);
-    f_errordot = @(time, state) f_ModelOutputDot(state) - ReferenceSignalDot(time);
-    f_aux_error     = @(time,state) f_errordot(time,state) - k_1.*f_error(time,state);
+    f_errordot  = @(time, state) f_ModelOutputDot(state) - ReferenceSignalDot(time);
+    f_aux_error = @(time,state) f_errordot(time,state) - k_1.*f_error(time,state);
     f_stagecost = @(time, state, control) FMPCCoeff*abs(f_aux_error(time,state))^2/((f_auxfunnel(time)^2-abs(f_aux_error(time,state))^2)) + EnergyCoeff*abs(control)^2;
-
-    %f_constraint = @(time,state) ReferenceSignal(time)-Funnel(time)<=f_ModelOutput(state)<=ReferenceSignal(time)+Funnel(time);
 
 
     %Dimensions
@@ -171,12 +176,9 @@ while true
         Params=[Params,CurParams];
         
         CurrentModelState = Mod;
-        %if ~CanInitialiseWithData(CurrentTime, AuxFunnel,CurrentModelState(1),CurrentModelState(2),SystemOutput,SystemOutputDot)
-            [CurrentModelState(1), CurrentModelState(2)] = InitialiseModel(CurrentTime, f_auxfunnel(CurrentTime),f_SystemOutput(CurrentSystemState),f_SystemOutputDot(CurrentSystemState));
-        %end
+        [CurrentModelState(1), CurrentModelState(2)] = InitialiseModel(CurrentTime, f_auxfunnel(CurrentTime),f_SystemOutput(CurrentSystemState),f_SystemOutputDot(CurrentSystemState));
     else
         CurrentModelState = ModelTrajectory(:,end);
-        %CurrentModelState(1) = CurrentSystemState(3);
     end
 end
 
@@ -202,9 +204,11 @@ Reference=ReferenceSignal(tstate);
 Psi = Funnel(tstate);
 
 
-
-save('data_learning_fmpc_dist_1.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied','ModelError','TrackingError','Params');
-
+if 0 == Scenario
+    save('data_learning_fmpc.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied','ModelError','TrackingError','Params');
+else
+    save('data_learning_fmpc_dist.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied','ModelError','TrackingError','Params');
+end
 %% Plots:
 
 figure
@@ -215,7 +219,6 @@ hold on
     fplot(@(x) ReferenceSignal(x) + Funnel(x),TimeWindow,'Color', 'r');
     fplot(@(x) ReferenceSignal(x) - Funnel(x),TimeWindow,'Color', 'r');
     xlim([InitialTime,10])
-    %ylim([-2 2])
 
     ylabel('$y$','interpreter','latex')
     xlabel('time $t$','interpreter','latex')

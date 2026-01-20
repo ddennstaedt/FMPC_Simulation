@@ -6,13 +6,17 @@ addpath('../util/')
 import casadi.*
 import casadi.tools.*
 
+Scenario = 0;
+% Scenario 0: trivial re-init
+% Scenario 1: with real re-init
+
 %% MPC Parameter
-T = 1;%1;%0.01;                 %Length of prediction horizion
-N = 12;%10;%20;                %Number of discretisation steps of MPC control
-M = 10000;%100;%10;              %Number of discretisation steps of integrator
+T = 1;                 %Length of prediction horizion
+N = 12;                %Number of discretisation steps of MPC control
+M = 10000;             %Number of discretisation steps of integrator
 h=T/N;                 %MPC sampling rate
 InitialTime = 0;       %Initial time of simulation
-FinalTime   = 10.1;     %End time of simulation
+FinalTime   = 10.1;    %End time of simulation
 
 MaxControl = 30;
 %% Initialisation
@@ -60,9 +64,6 @@ FMPCCoeff   = 1;                %Amplification of the funnel term
 EnergyCoeff = 10^(-4);%10^(-4);  %10^(-1)        %Amplification of the energy/control term
 f_aux_error     = @(time,state) f_errordot(time,state) - k_1.*f_error(time,state);
 f_stagecost = @(time, state, control) FMPCCoeff*abs(f_aux_error(time,state))^2/((f_auxfunnel(time)^2-abs(f_aux_error(time,state))^2)) + EnergyCoeff*abs(control)^2;
-
-%f_constraint = @(time,state) ReferenceSignal(time)-Funnel(time)<=f_ModelOutput(state)<=ReferenceSignal(time)+Funnel(time);
-
 
 %% Optimisation problem
 %Dimensions
@@ -144,9 +145,10 @@ while true
 
     
     %Update model state with measurement
-    %Only update model output with system output 
-    [CurrentModelState(1), CurrentModelState(2)] = InitialiseModel(CurrentTime, f_auxfunnel(CurrentTime),f_SystemOutput(CurrentSystemState),f_SystemOutputDot(CurrentSystemState));
-
+    %Only update model output with system output
+    if 1 == Scenario
+        [CurrentModelState(1), CurrentModelState(2)] = InitialiseModel(CurrentTime, f_auxfunnel(CurrentTime),f_SystemOutput(CurrentSystemState),f_SystemOutputDot(CurrentSystemState));
+    end
     %Set last control values as initial guesses for the next control to
     %help the optimiser
     ControlInit = [uopt(2:end),uopt(end)];
@@ -181,29 +183,15 @@ Psi = Funnel(tstate);
 ModelError    = ModelOutput - ReferenceSignal(tstate);
 TrackingError = SystemOutput - ReferenceSignal(tstate);
 
-
-save('data_robustfmpc_reinit.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied','ModelError','TrackingError');
-
+if 0 == Scenario
+    save('data_robustfmpc_trivial.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied','ModelError','TrackingError');
+else
+    save('data_robustfmpc_reinit.mat', 'tstate', 'SystemOutput','ModelOutput', 'Reference', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc','uFC','u_applied','ModelError','TrackingError');    
+end
 
 
 
 %% Plots:
-
-% figure
-% hold on
-%     plot(tstate,SystemOutput,'linewidth',1.5)
-%     plot(tstate,ModelOutput,'linewidth',1.5)
-%     plot(tstate,Reference);
-%     plot(tstate,Reference + Psi,'Color', 'r');
-%     plot(tstate,Reference - Psi,'Color', 'r');
-%     xlim([InitialTime,4])
-%     %ylim([-2 2])
-% 
-%     ylabel('$y$','interpreter','latex')
-%     xlabel('time $t$','interpreter','latex')
-% 
-%     legend('$y$ of FMPC','$y_{\mathrm{ref}}$','Interpreter','latex')
-% hold off
 
 figure
 hold on

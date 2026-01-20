@@ -6,13 +6,24 @@ addpath('../util/')
 import casadi.*
 import casadi.tools.*
 
+Scenario = 2;
+%Scenario 0: FMPC with lambda = 10^-3
+%Scenario 1: FMPC with lambda = 10^-4
+%Scenario 2: MPC  with lambda = 10^-4
+
 %% MPC parameters
-T = 1;%1;%0.01;                 %Length of prediction horizion
-N = 10;%10;%20;                %Number of discretisation steps of MPC control
-M = 100;%100;%10;              %Number of discretisation steps of integrator
+T = 1;                 %Length of prediction horizion
+N = 10;                %Number of discretisation steps of MPC control
+M = 100;               %Number of discretisation steps of integrator
 h=T/N;                 %MPC sampling rate
 InitialTime = 0;       %Initial time of simulation
-FinalTime   = 10.1;     %End time of simulation
+FinalTime   = 10.1;    %End time of simulation
+if 0 == Scenario
+    EnergyCoeff = 10^(-3);  %Amplification of the energy/control term
+else
+    EnergyCoeff = 10^(-4);
+end
+
 
 MaxControl = 30;
 %% Initialisation
@@ -51,18 +62,21 @@ f_auxfunnel = @(t) 1/Gam*(InitialErrorDot+k_1*InitialError)*exp(-alpha * t ) + b
 
 %% Cost function
 FMPCCoeff   = 1;                 %Amplification of the funnel term
-EnergyCoeff = 10^(-4);%10^(-4);  %Amplification of the energy/control term
-f_aux_error     = @(time,state) f_errordot(time,state) - k_1.*f_error(time,state);
-f_stagecost = @(time, state, control) FMPCCoeff*abs(f_aux_error(time,state))^2/((f_auxfunnel(time)^2-abs(f_aux_error(time,state))^2)) + EnergyCoeff*abs(control)^2;
-f_stagecost_quad = @(time, state, control) FMPCCoeff*abs(f_error(time,state))^2 + EnergyCoeff*abs(control)^2;
 
+f_aux_error     = @(time,state) f_errordot(time,state) - k_1.*f_error(time,state);
+if 2 == Scenario
+    %quadratic stagecost
+    f_stagecost = @(time, state, control) FMPCCoeff*abs(f_error(time,state))^2 + EnergyCoeff*abs(control)^2;
+else
+    f_stagecost = @(time, state, control) FMPCCoeff*abs(f_aux_error(time,state))^2/((f_auxfunnel(time)^2-abs(f_aux_error(time,state))^2)) + EnergyCoeff*abs(control)^2;
+end 
 f_constraint = @(time,state) ReferenceSignal(time)-Funnel(time)<=f_ModelOutput(state)<=ReferenceSignal(time)+Funnel(time);
 
 %% Optimisation problem
 ModelStateDimension = length(InitialModelState);
 ControlDimension = 1;
 
-[ocp, X, U, J,OCPInit,t0] = BuildOCP(f_Model,f_stagecost_quad,ModelStateDimension,ControlDimension,MaxControl, N, T,f_constraint);
+[ocp, X, U, J,OCPInit,t0] = BuildOCP(f_Model,f_stagecost,ModelStateDimension,ControlDimension,MaxControl, N, T,f_constraint);
 
 %% MPC Loop
 
@@ -140,18 +154,22 @@ TrackingError = SystemOutput - ReferenceSignal(tstate);
 Reference=ReferenceSignal(tstate);
 Psi = Funnel(tstate);
 
-%save('data_fmpc_10-4.mat', 'tstate', 'TrackingError', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc');
-
-tstate_m = tstate;
-SystemOutput_m = SystemOutput;
-Reference_m = Reference;
-Psi_m = Psi;
-tcontrol_m = tcontrol;
-umpc_m = umpc;
-TrackingError_m = TrackingError;
-InitialTime_m = InitialTime;
-FinalTime_m = FinalTime;
-%save('data_mpc_quadratic.mat', 'tstate_m', 'TrackingError_m', 'Psi_m', 'tcontrol_m', 'InitialTime_m','FinalTime_m','umpc_m')
+if 0 == Scenario
+    save('data_fmpc_10-3.mat', 'tstate', 'TrackingError', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc');
+elseif 1 == Scenario
+    save('data_fmpc_10-4.mat', 'tstate', 'TrackingError', 'Psi', 'tcontrol', 'InitialTime','FinalTime','umpc');
+else
+    tstate_m = tstate;
+    SystemOutput_m = SystemOutput;
+    Reference_m = Reference;
+    Psi_m = Psi;
+    tcontrol_m = tcontrol;
+    umpc_m = umpc;
+    TrackingError_m = TrackingError;
+    InitialTime_m = InitialTime;
+    FinalTime_m = FinalTime;
+    save('data_mpc_quadratic.mat', 'tstate_m', 'TrackingError_m', 'Psi_m', 'tcontrol_m', 'InitialTime_m','FinalTime_m','umpc_m')
+end
 
 
 %% Plots:
@@ -162,7 +180,7 @@ hold on
     plot(tstate,Reference);
     plot(tstate,Reference + Psi,'Color', 'r');
     plot(tstate,Reference - Psi,'Color', 'r');
-    xlim([InitialTime,4])
+    xlim([InitialTime,10])
     %ylim([-2 2])
 
     ylabel('$y$','interpreter','latex')
@@ -190,7 +208,7 @@ figure
 hold on
     stairs(tcontrol,umpc,'linewidth',1.5)
     axis tight
-    xlim([InitialTime,4])
+    xlim([InitialTime,10])
 
     ylabel('$u$','interpreter','latex')
     xlabel('time $t$','interpreter','latex')
