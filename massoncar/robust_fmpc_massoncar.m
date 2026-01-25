@@ -61,7 +61,7 @@ f_auxfunnel = @(t) 1/Gam*(InitialErrorDot+k_1*InitialError)*exp(-alpha * t ) + b
 
 %% Cost function
 FMPCCoeff   = 1;                %Amplification of the funnel term
-EnergyCoeff = 10^(-4);%10^(-4);  %10^(-1)        %Amplification of the energy/control term
+EnergyCoeff = 10^(-4);          %Amplification of the energy/control term
 f_aux_error     = @(time,state) f_errordot(time,state) - k_1.*f_error(time,state);
 f_stagecost = @(time, state, control) FMPCCoeff*abs(f_aux_error(time,state))^2/((f_auxfunnel(time)^2-abs(f_aux_error(time,state))^2)) + EnergyCoeff*abs(control)^2;
 

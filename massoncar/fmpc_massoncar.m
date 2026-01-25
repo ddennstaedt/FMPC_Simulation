@@ -64,19 +64,18 @@ f_auxfunnel = @(t) 1/Gam*(InitialErrorDot+k_1*InitialError)*exp(-alpha * t ) + b
 FMPCCoeff   = 1;                 %Amplification of the funnel term
 
 f_aux_error     = @(time,state) f_errordot(time,state) - k_1.*f_error(time,state);
-if 2 == Scenario
-    %quadratic stagecost
-    f_stagecost = @(time, state, control) FMPCCoeff*abs(f_error(time,state))^2 + EnergyCoeff*abs(control)^2;
-else
-    f_stagecost = @(time, state, control) FMPCCoeff*abs(f_aux_error(time,state))^2/((f_auxfunnel(time)^2-abs(f_aux_error(time,state))^2)) + EnergyCoeff*abs(control)^2;
-end 
-f_constraint = @(time,state) ReferenceSignal(time)-Funnel(time)<=f_ModelOutput(state)<=ReferenceSignal(time)+Funnel(time);
-
 %% Optimisation problem
 ModelStateDimension = length(InitialModelState);
 ControlDimension = 1;
-
-[ocp, X, U, J,OCPInit,t0] = BuildOCP(f_Model,f_stagecost,ModelStateDimension,ControlDimension,MaxControl, N, T,f_constraint);
+if 2 == Scenario
+    %quadratic stagecost
+    f_stagecost = @(time, state, control) FMPCCoeff*abs(f_error(time,state))^2 + EnergyCoeff*abs(control)^2;
+    f_constraint = @(time,state) ReferenceSignal(time)-Funnel(time)<=f_ModelOutput(state)<=ReferenceSignal(time)+Funnel(time);
+    [ocp, X, U, J,OCPInit,t0] = BuildOCP(f_Model,f_stagecost,ModelStateDimension,ControlDimension,MaxControl, N, T,f_constraint);
+else
+    f_stagecost = @(time, state, control) FMPCCoeff*abs(f_aux_error(time,state))^2/((f_auxfunnel(time)^2-abs(f_aux_error(time,state))^2)) + EnergyCoeff*abs(control)^2;
+    [ocp, X, U, J,OCPInit,t0] = BuildOCP(f_Model,f_stagecost,ModelStateDimension,ControlDimension,MaxControl, N, T);
+end 
 
 %% MPC Loop
 
